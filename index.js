@@ -5,6 +5,21 @@
 //   𝐁𝐚𝐬𝐞: 𝐀𝐋𝐃𝐘 𝐁𝐚𝐢𝐥𝐞𝐲𝐬    //
 //﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌﹌//
 
+// ===================={ ANTI-CRASH SYSTEM (RAILWAY / VPS / LOCAL) }==================== //
+process.on('uncaughtException', (err, origin) => {
+  console.log('\x1b[31m[ANTI-CRASH] Uncaught Exception:\x1b[0m', err?.message || err);
+  if (err?.stack) console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('\x1b[31m[ANTI-CRASH] Unhandled Rejection:\x1b[0m', reason?.message || reason);
+  if (reason?.stack) console.error(reason.stack);
+});
+
+process.on('uncaughtExceptionMonitor', (err, origin) => {
+  console.log('\x1b[33m[ANTI-CRASH MONITOR] Origin:\x1b[0m', origin, err?.message || err);
+});
+
 require('./control/settings');
 const {
   default: makeWASocket,
@@ -145,7 +160,9 @@ async function connectToWhatsApp() {
         console.log(chalk.cyan(`[PESAN MASUK] ${m.isGroup ? '[GRUP]' : '[PC]'} ${senderJid}: ${m.text}`));
       }
 
-      require("./aldy")(sock, m, messages, store);
+      await require("./aldy")(sock, m, messages, store).catch((err) => {
+        console.log(chalk.red("[HANDLER ERROR]"), err?.message || err);
+      });
 
     } catch (e) {
       console.log(e);
@@ -164,7 +181,9 @@ async function connectToWhatsApp() {
     if (connection === 'close') {
       console.log(chalk.red("❌ Koneksi terputus!"), lastDisconnect?.error?.message || '');
       if (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) {
-        connectToWhatsApp();
+        connectToWhatsApp().catch(err => {
+          console.log(chalk.red("[RECONNECT ERROR]"), err?.message || err);
+        });
       }
     }
   });
@@ -172,4 +191,6 @@ async function connectToWhatsApp() {
   sock.ev.on('creds.update', saveCreds);
 }
 
-connectToWhatsApp();
+connectToWhatsApp().catch((err) => {
+  console.log(chalk.red("[FATAL START ERROR]"), err?.message || err);
+});

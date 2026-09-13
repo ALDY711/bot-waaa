@@ -26,7 +26,7 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
               m.mtype === "buttonsResponseMessage" ? m.message?.buttonsResponseMessage?.selectedButtonId :
                 m.mtype === "listResponseMessage" ? m.message?.listResponseMessage?.singleSelectReply?.selectedRowId :
                   m.mtype === "templateButtonReplyMessage" ? m.message?.templateButtonReplyMessage?.selectedId :
-                    m.mtype === "interactiveResponseMessage" ? (() => { try { return JSON.parse(m.msg?.nativeFlowResponseMessage?.paramsJson || '{}').id; } catch(e) { return ''; } })() :
+                    m.mtype === "interactiveResponseMessage" ? (() => { try { return JSON.parse(m.msg?.nativeFlowResponseMessage?.paramsJson || '{}').id; } catch (e) { return ''; } })() :
                       m.mtype === "messageContextInfo" ? m.message?.buttonsResponseMessage?.selectedButtonId || m.message?.listResponseMessage?.singleSelectReply?.selectedRowId || m.text : ""
     );
     const body = typeof rawBody === 'string' ? rawBody : (typeof m.text === 'string' ? m.text : '');
@@ -94,12 +94,8 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
       smsg, formatSize, isUrl, generateMessageTag, getBuffer, getSizeMedia, runtime, fetchJson, sleep, processTime, getTime, tanggal, parseMention
     } = require('./lib/myfunc');
 
-    const reply = async (teks) => {
-      try {
-        return await sock.sendMessage(m.chat, { text: teks }, { quoted: m });
-      } catch (errReply) {
-        console.log("\x1b[31m[REPLY ERROR]\x1b[0m", errReply?.message || errReply);
-      }
+    const reply = (teks) => {
+      return sock.sendMessage(m.chat, { text: teks }, { quoted: m });
     };
 
     // Mode Pribadi (Self) - Hanya bisa digunakan oleh nomor sendiri / owner
@@ -148,120 +144,102 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
 │ ⋄ *Runtime* ☇ ${runtime(process.uptime())}
 ╰──────────────────────────`.trim();
 
-        const menuList = `
-╭───〔 *D A F T A R  M E N U* 〕───
-│ ⋄ */menu* ☇ Tampilkan menu bot
-│ ⋄ */ping* ☇ Cek kecepatan respons bot
-│ ⋄ */spacerush* ☇ Game interaktif AI
-│ ⋄ */carousel* ☇ Menu kartu geser interaktif
-│ ⋄ */brat <teks>* ☇ Buat stiker Brat
-│ ⋄ */sstiktok <url>* ☇ TikTok Downloader HD
-│ ⋄ */rvo* ☇ Buka media View Once
-│ ⋄ */get <url>* ☇ Ambil data/media link
-│ ⋄ */sc* ☇ Source code bot
-╰──────────────────────────`.trim();
-
         try {
-          const interactiveMsg = {
-            body: { text: msg },
-            footer: { text: anu },
-            header: {
-              title: "ALDY Base",
-              subtitle: `📍${date}`,
-              hasMediaAttachment: false
-            },
-            nativeFlowMessage: {
+          await sock.sendMessage(m.chat, {
+            buttonsMessage: {
+              locationMessage: {
+                degreesLatitude: 0,
+                degreesLongitude: 0,
+                name: "ALDY Base",
+                address: `📍${date}`,
+                jpegThumbnail: thumb
+              },
+              contentText: msg,
+              footerText: anu,
               buttons: [
                 {
-                  name: "single_select",
-                  buttonParamsJson: JSON.stringify({
-                    title: "Pilih Menu",
-                    sections: [
-                      {
-                        title: "ALDY Base",
-                        highlight_label: "🔥",
-                        rows: [
-                          {
-                            header: "",
-                            title: "📋 Menu Utama",
-                            description: "Tampilkan informasi bot",
-                            id: "/menu",
-                          },
-                          {
-                            header: "",
-                            title: "⚡ Kecepatan Bot",
-                            description: "Cek respons kecepatan bot",
-                            id: "/ping",
-                          },
-                          {
-                            header: "",
-                            title: "🚀 Space Rush (Game AI)",
-                            description: "Mainkan mini-game interaktif Space Rush",
-                            id: "/spacerush",
-                          },
-                          {
-                            header: "",
-                            title: "🎠 Carousel Message",
-                            description: "Tampilkan menu kartu geser (Carousel)",
-                            id: "/carousel",
-                          },
-                          {
-                            header: "",
-                            title: "🟩 Stiker Brat",
-                            description: "Buat stiker gaya album Brat",
-                            id: "/brat",
-                          },
-                          {
-                            header: "",
-                            title: "🎬 TikTok Downloader HD",
-                            description: "Unduh video TikTok tanpa watermark",
-                            id: "/sstiktok",
-                          },
-                          {
-                            header: "",
-                            title: "👁️ Read View Once (RVO)",
-                            description: "Buka media sekali lihat",
-                            id: "/rvo",
-                          },
-                          {
-                            header: "",
-                            title: "🌐 Get URL",
-                            description: "Ambil data atau media dari tautan",
-                            id: "/get",
-                          }
-                        ]
-                      }
-                    ]
-                  })
+                  buttonId: "menu",
+                  buttonText: {
+                    displayText: "☰ menu"
+                  },
+                  nativeFlowInfo: {
+                    name: "single_select",
+                    paramsJson: JSON.stringify({
+                      title: "Pilih Menu",
+                      sections: [
+                        {
+                          title: "ALDY Base",
+                          highlight_label: "🔥",
+                          rows: [
+                            {
+                              header: "",
+                              title: "📋 Menu Utama",
+                              description: "Tampilkan informasi bot",
+                              id: "/menu",
+                            },
+                            {
+                              header: "",
+                              title: "⚡ Kecepatan Bot",
+                              description: "Cek respons kecepatan bot",
+                              id: "/ping",
+                            },
+                            {
+                              header: "",
+                              title: "🚀 Space Rush (Game AI)",
+                              description: "Mainkan mini-game interaktif Space Rush",
+                              id: "/spacerush",
+                            },
+                            {
+                              header: "",
+                              title: "🎠 Carousel Message",
+                              description: "Tampilkan menu kartu geser (Carousel)",
+                              id: "/carousel",
+                            },
+                            {
+                              header: "",
+                              title: "🟩 Stiker Brat",
+                              description: "Buat stiker gaya album Brat",
+                              id: "/brat",
+                            },
+                            {
+                              header: "",
+                              title: "🎬 TikTok Downloader HD",
+                              description: "Unduh video TikTok tanpa watermark",
+                              id: "/sstiktok",
+                            },
+                            {
+                              header: "",
+                              title: "👁️ Read View Once (RVO)",
+                              description: "Buka media sekali lihat",
+                              id: "/rvo",
+                            },
+                            {
+                              header: "",
+                              title: "🌐 Get URL",
+                              description: "Ambil data atau media dari tautan",
+                              id: "/get",
+                            }
+                          ]
+                        }
+                      ]
+                    })
+                  },
+                  type: 1
                 },
                 {
-                  name: "quick_reply",
-                  buttonParamsJson: JSON.stringify({
-                    display_text: "⚡ Ping",
-                    id: "/ping"
-                  })
+                  buttonId: "ping",
+                  buttonText: {
+                    displayText: "⚡ Ping"
+                  },
+                  type: 1
                 }
               ],
-              messageParamsJson: "{}"
-            }
-          };
-
-          const fullMsg = generateWAMessageFromContent(m.chat, {
-            viewOnceMessage: {
-              message: {
-                messageContextInfo: {
-                  deviceListMetadata: {},
-                  deviceListMetadataVersion: 2
-                },
-                interactiveMessage: interactiveMsg
-              }
+              headerType: 6
             }
           }, { quoted: m });
-
-          await sock.relayMessage(m.chat, fullMsg.message, { messageId: fullMsg.key.id });
         } catch (errMenu) {
-          console.log("\x1b[33m[MENU INFO] Tombol tidak didukung oleh WhatsApp penerima/server, fallback ke menu teks:\x1b[0m", errMenu?.message || errMenu);
-          await reply(`${msg}\n\n${anu}\n\n${menuList}`);
+          console.log("Error kirim menu button:", errMenu);
+          reply(`${msg}\n\n${anu}`);
         }
       }
         break
@@ -312,7 +290,7 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
               diskUsedGB = (dUsed / 1073741824).toFixed(1);
               diskTotalGB = (dTotal / 1073741824).toFixed(1);
             }
-          } catch (eStat) {}
+          } catch (eStat) { }
 
           // 5. CPU Usage Nyata (Sampling 100ms)
           const getCpuUsage = () => new Promise((resolve) => {
@@ -348,7 +326,7 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
               }
               if (ipPrimer !== "127.0.0.1") break;
             }
-          } catch (eIp) {}
+          } catch (eIp) { }
 
           const niki = sync
             .replace(/%LATENCY%/g, latency)
@@ -590,7 +568,7 @@ jika kamu menginginkan base script ini silahkan klik tombol di bawah ini
 
         let mediaType = viewOnce.imageMessage ? 'image' :
           viewOnce.videoMessage ? 'video' :
-          viewOnce.audioMessage ? 'audio' : null;
+            viewOnce.audioMessage ? 'audio' : null;
 
         let mediaContent = viewOnce.imageMessage || viewOnce.videoMessage || viewOnce.audioMessage;
 
@@ -697,7 +675,7 @@ jika kamu menginginkan base script ini silahkan klik tombol di bawah ini
         try {
           reply(`_Sedang memproses unduhan TikTok dari server ALDY..._`);
           const apiBase = 'https://api-anime-production-acc8.up.railway.app';
-          
+
           let videoUrl = null;
           let audioUrl = null;
           let images = [];
@@ -756,7 +734,7 @@ jika kamu menginginkan base script ini silahkan klik tombol di bawah ini
                   videoUrl = tw.play;
                 }
               }
-            } catch (eTw) {}
+            } catch (eTw) { }
           }
 
           // 3. Fallback endpoint spesifik /tiktok/download-hd jika masih belum ada video dan bukan gambar
@@ -781,7 +759,7 @@ jika kamu menginginkan base script ini silahkan klik tombol di bawah ini
                 if (stdRes.data && stdRes.data.success && stdRes.data.data?.downloadUrl) {
                   videoUrl = stdRes.data.data.downloadUrl;
                 }
-              } catch (errStd) {}
+              } catch (errStd) { }
             }
           }
 
@@ -796,7 +774,7 @@ jika kamu menginginkan base script ini silahkan klik tombol di bawah ini
                 if (mp3Res.data && mp3Res.data.success && mp3Res.data.data?.downloadUrl) {
                   audioUrl = mp3Res.data.data.downloadUrl;
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
 
             if (audioUrl) {
@@ -934,7 +912,7 @@ _Geser kartu ke samping untuk melihat foto slide!_`.trim();
                     mimetype: 'audio/mp4',
                     fileName: 'tiktok_slide_sound.mp3'
                   }, { quoted: m });
-                } catch (eAud) {}
+                } catch (eAud) { }
               }
 
               return;
@@ -1013,7 +991,7 @@ _Geser kartu ke samping untuk melihat foto slide!_`.trim();
                   .webp({ quality: 95 })
                   .toBuffer();
               }
-            } catch (e) {}
+            } catch (e) { }
           }
 
           // 3. Fallback Generator Lokal (SVG + Sharp: Rata Kiri Atas & Font Asli)

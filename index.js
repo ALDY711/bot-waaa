@@ -142,30 +142,38 @@ async function connectToWhatsApp() {
   sock.ev.on('messages.upsert', async ({ messages }) => {
     try {
       const mek = messages[0];
-      if (!mek.message) return;
+      if (!mek || !mek.message) return;
       if (mek.key.remoteJid === 'status@broadcast') return;
 
       const m = smsg(sock, mek, store);
       if (!m) return;
 
-      const senderJid = (m.sender || '').replace(/:\d+(?=@)/, '');
+      const senderJid = (m.sender || mek.key.remoteJid || '').replace(/:\d+(?=@)/, '');
       const isCreator = [sock?.user?.id, ...(global.owner || [])]
         .map(v => v.replace(/[^0-9]/g, '') + '@s.whatsapp.net')
         .includes(senderJid);
 
-      if (!sock.public && !mek.key.fromMe && !isCreator) return;
+      // Tampilkan SEMUA pesan masuk ke log terminal tanpa filter
+      const chatType = m.isGroup ? `[GRUP: ${m.chat}]` : '[PC]';
+      const fromTag = mek.key.fromMe ? '[DARI SAYA/BOT]' : '[DARI PENGIRIM]';
+      const pushNameStr = m.pushName ? `(${m.pushName})` : '';
+      const textPreview = m.text || (m.mtype ? `[Media/Tipe: ${m.mtype}]` : '[Pesan Tanpa Teks]');
+
+      console.log(chalk.cyan(`[PESAN MASUK] ${chatType} ${fromTag} ${senderJid} ${pushNameStr}: ${textPreview}`));
+
+      // Filter hak akses bot jika mode Self (Pribadi)
+      if (!sock.public && !mek.key.fromMe && !isCreator) {
+        console.log(chalk.gray(`   └── [FILTER MODE SELF] Pesan dari ${senderJid} tidak diproses karena bot dalam mode pribadi.`));
+        return;
+      }
       if (mek.key.id.startsWith('BAE5') && mek.key.id.length === 16) return;
 
-      if (m.text) {
-        console.log(chalk.cyan(`[PESAN MASUK] ${m.isGroup ? '[GRUP]' : '[PC]'} ${senderJid}: ${m.text}`));
-      }
-
       await require("./aldy")(sock, m, messages, store).catch((err) => {
-        console.log(chalk.red("[HANDLER ERROR]"), err?.message || err);
+        console.error(chalk.red.bold("\n[ERROR HANDLER ALDY]:"), err);
       });
 
     } catch (e) {
-      console.log(e);
+      console.error(chalk.red.bold("\n[ERROR MESSAGES.UPSERT]:"), e);
     }
   });
 
@@ -179,10 +187,10 @@ async function connectToWhatsApp() {
       console.log(chalk.greenBright("========================================\n"));
     }
     if (connection === 'close') {
-      console.log(chalk.red("❌ Koneksi terputus!"), lastDisconnect?.error?.message || '');
+      console.error(chalk.red.bold("\n[KONEKSI TERPUTUS]"), lastDisconnect?.error || 'Koneksi terputus.');
       if (lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut) {
         connectToWhatsApp().catch(err => {
-          console.log(chalk.red("[RECONNECT ERROR]"), err?.message || err);
+          console.error(chalk.red.bold("[ERROR RECONNECT]:"), err);
         });
       }
     }

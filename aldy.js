@@ -238,7 +238,7 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
             }
           }, { quoted: m });
         } catch (errMenu) {
-          console.log("Error kirim menu button:", errMenu);
+          console.error("\x1b[31m[ERROR MENU BUTTON]:\x1b[0m", errMenu);
           reply(`${msg}\n\n${anu}`);
         }
       }
@@ -1138,7 +1138,7 @@ _Geser kartu ke samping untuk melihat foto slide!_`.trim();
         }
     }
   } catch (err) {
-    console.log(require("util").format(err));
+    console.error("\x1b[31m[ERROR HANDLER UTAMA ALDY.JS]:\x1b[0m", err);
   }
 };
 

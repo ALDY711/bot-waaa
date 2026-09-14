@@ -29,10 +29,12 @@ const {
   fetchLatestBaileysVersion,
   makeInMemoryStore,
   jidDecode,
+  jidNormalizedUser,
   downloadContentFromMessage,
   makeCacheableSignalKeyStore,
   updateProfileStatus
 } = require("@whiskeysockets/baileys");
+const NodeCache = require('@cacheable/node-cache');
 const pino = require('pino');
 const readline = require("readline");
 const fs = require('fs');
@@ -73,10 +75,32 @@ const question = (text) => {
   });
 };
 
+// Inisialisasi Cache retry counter untuk mencegah loop pengiriman ulang pesan
+const msgRetryCounterCache = new NodeCache({ stdTTL: 3600, useClones: false });
+
 const store = makeInMemoryStore({ logger: pino({ level: 'silent' }) });
 
+// Muat riwayat pesan dari file jika tersedia
+const sessionDir = global.session ? `./${global.session}` : "./session";
+const storeFile = `${sessionDir}/baileys_store.json`;
+if (fs.existsSync(storeFile)) {
+  try {
+    store.readFromFile(storeFile);
+  } catch (err) {
+    // Abaikan jika file store kosong/rusak
+  }
+}
+
+// Simpan store secara berkala setiap 30 detik
+setInterval(() => {
+  try {
+    if (fs.existsSync(sessionDir)) {
+      store.writeToFile(storeFile);
+    }
+  } catch (err) {}
+}, 30_000);
+
 async function connectToWhatsApp() {
-  const sessionDir = global.session ? `./${global.session}` : "./session";
   const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
   const { version } = await fetchLatestBaileysVersion();
 
@@ -88,6 +112,15 @@ async function connectToWhatsApp() {
     auth: {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }))
+    },
+    msgRetryCounterCache,
+    getMessage: async (key) => {
+      const jid = jidNormalizedUser ? jidNormalizedUser(key.remoteJid) : key.remoteJid;
+      let msg = await store.loadMessage(jid, key.id);
+      if (!msg && key.remoteJid !== jid) {
+        msg = await store.loadMessage(key.remoteJid, key.id);
+      }
+      return msg?.message || undefined;
     }
   });
 

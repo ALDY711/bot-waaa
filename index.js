@@ -34,7 +34,8 @@ const {
   makeCacheableSignalKeyStore,
   updateProfileStatus
 } = require("@whiskeysockets/baileys");
-const NodeCache = require('@cacheable/node-cache');
+const NodeCacheRaw = require('@cacheable/node-cache');
+const NodeCache = NodeCacheRaw.default || NodeCacheRaw.NodeCache || NodeCacheRaw;
 const pino = require('pino');
 const readline = require("readline");
 const fs = require('fs');

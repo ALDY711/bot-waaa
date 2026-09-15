@@ -202,6 +202,10 @@ async function connectToWhatsApp() {
       }
       if (mek.key.id.startsWith('BAE5') && mek.key.id.length === 16) return;
 
+      try {
+        delete require.cache[require.resolve("./aldy")];
+        delete require.cache[require.resolve("./lib/spacerush")];
+      } catch (_) {}
       await require("./aldy")(sock, m, messages, store).catch((err) => {
         console.error(chalk.red.bold("\n[ERROR HANDLER ALDY]:"), err);
       });

@@ -373,7 +373,11 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
             messageContextInfo: {
               deviceListMetadata: {},
               deviceListMetadataVersion: 2,
-              botMetadata: { messageDisclaimerText: "", botResponseId: responseId }
+              botMetadata: {
+                messageDisclaimerText: "",
+                botResponseId: responseId,
+                invokerJid: m.sender || null
+              }
             },
             botForwardedMessage: {
               message: {
@@ -382,10 +386,12 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
                   submessages: [{ messageType: 2, messageText: "Server Monitor" }],
                   unifiedResponse: { data: dataBase64 },
                   contextInfo: {
-                    forwardingScore: 1,
-                    isForwarded: true,
-                    forwardedAiBotMessageInfo: { botJid: "867051314767696@bot" },
-                    forwardOrigin: 4
+                    isForwarded: false,
+                    ...(m.quoted ? {
+                      stanzaId: m.quoted.id,
+                      participant: m.quoted.sender,
+                      quotedMessage: m.quoted.message
+                    } : {})
                   }
                 }
               }

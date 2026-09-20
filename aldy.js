@@ -218,6 +218,12 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
                               title: "🌐 Get URL",
                               description: "Ambil data atau media dari tautan",
                               id: "/get",
+                            },
+                            {
+                              header: "",
+                              title: "🛍️ Katalog Bisnis",
+                              description: "Menu kelola katalog produk WhatsApp",
+                              id: "/katalogmenu",
                             }
                           ]
                         }
@@ -1138,6 +1144,226 @@ _Geser kartu ke samping untuk melihat foto slide!_`.trim();
         } catch (err) {
           console.error("Error Carousel:", err);
           reply(`*Gagal mengirim Carousel Message:* ${err.message}`);
+        }
+      }
+        break
+
+      //=============={ Fitur Katalog WhatsApp Business }==============//
+      case "katalogmenu":
+      case "menukatalog":
+      case "kataloghelp": {
+        const teksKatalog = `╭───〔 *KATALOG WHATSAPP BUSINESS* 〕───
+│ ⋄ *${prefix}addproduk* ☇ Tambah produk baru ke katalog
+│ ⋄ *${prefix}getkatalog* ☇ Tampilkan daftar produk katalog
+│ ⋄ *${prefix}delproduk* ☇ Hapus produk dari katalog
+│ ⋄ *${prefix}koleksi* ☇ Lihat daftar koleksi/kategori
+╰──────────────────────────
+
+📌 *Petunjuk Penggunaan:*
+1. *Tambah Produk:*
+   Kirim atau balas foto produk dengan format:
+   \`${prefix}addproduk Nama | Harga | Deskripsi | [SKU]\`
+   _Contoh:_
+   \`${prefix}addproduk Kopi Robusta 250g | 45000 | Biji kopi asli pilihan | SKU-01\`
+
+2. *Lihat Produk:*
+   Ketik \`${prefix}getkatalog\` untuk melihat produk toko Anda, atau \`${prefix}getkatalog 628xxx\` untuk nomor lain.
+
+3. *Hapus Produk:*
+   Ketik \`${prefix}delproduk <ID_PRODUK>\`
+   _(ID produk bisa dilihat pada daftar getkatalog)_
+
+⚠️ *Catatan:* Nomor bot wajib terdaftar sebagai WhatsApp Business (SMB).`;
+        reply(teksKatalog);
+      }
+        break
+
+      case "addproduk":
+      case "addproduct":
+      case "uploadkatalog":
+      case "tambahproduk": {
+        if (!isCreator) return reply("❌ *Perintah ini khusus Owner bot / Pemilik Toko!*");
+
+        const { createCatalogProduct, formatRupiah, downloadMedia } = require('./lib/catalog');
+
+        // Deteksi gambar dari reply pesan atau pesan saat ini
+        let qMsg = m.msg?.contextInfo?.quotedMessage;
+        let viewOnce = qMsg?.viewOnceMessageV2?.message ||
+          qMsg?.viewOnceMessage?.message ||
+          qMsg?.viewOnceMessageV2Extension?.message ||
+          qMsg;
+
+        let imgMedia = viewOnce?.imageMessage || m.quoted?.message?.imageMessage || m.message?.imageMessage || m.msg?.imageMessage;
+
+        if (!imgMedia) {
+          return reply(`🛍️ *CARA UPLOAD PRODUK KE KATALOG:*
+
+Balas (reply) foto produk atau kirim foto dengan caption perintah berikut:
+*${prefix + command} Nama Produk | Harga | Deskripsi | [SKU]*
+
+*Contoh:*
+*${prefix + command} Kaos Distro Pria | 75000 | Bahan cotton combed 30s adem | SKU-TS-01*
+
+_Catatan: Nomor bot harus merupakan nomor WhatsApp Business._`);
+        }
+
+        if (!text || !text.includes('|')) {
+          return reply(`❌ *Format teks salah!*\n\nGunakan pemisah tanda pagar tegak (|):\n*${prefix + command} Nama | Harga | Deskripsi | [SKU Opsional]*\n\n*Contoh:*\n*${prefix + command} Sepatu Sneakers | 150000 | Bahan kulit sintetis premium | SKU-SP-01*`);
+        }
+
+        const parts = text.split('|').map(s => s ? s.trim() : '');
+        const pName = parts[0];
+        const pPrice = Number(parts[1]);
+        const pDesc = parts[2] || '';
+        const pSku = parts[3] || '';
+
+        if (!pName) return reply("❌ *Nama produk tidak boleh kosong!*");
+        if (isNaN(pPrice) || pPrice < 0) return reply("❌ *Harga produk harus berupa angka yang valid!* (Contoh: 50000)");
+
+        try {
+          reply("⏳ _Sedang mengunduh foto dan mendaftarkan produk ke katalog WhatsApp Business..._");
+
+          const imgBuffer = await downloadMedia(imgMedia, 'image');
+          if (!imgBuffer || imgBuffer.length === 0) {
+            return reply("❌ *Gagal memproses file gambar produk.*");
+          }
+
+          const created = await createCatalogProduct(sock, {
+            name: pName,
+            description: pDesc,
+            price: pPrice,
+            currency: 'IDR',
+            retailerId: pSku,
+            images: [imgBuffer],
+            originCountryCode: 'ID',
+            isHidden: false
+          });
+
+          const hasilTeks = `✅ *PRODUK BERHASIL DITAMBAHKAN KE KATALOG!*
+
+🛍️ *Nama:* ${created.name || pName}
+💰 *Harga:* ${formatRupiah(created.price || pPrice)}
+🏷️ *ID Produk:* \`${created.id || '-'}\`
+📦 *SKU / Kode:* ${created.retailerId || pSku || '-'}
+📝 *Deskripsi:* ${created.description || pDesc || '-'}
+🔍 *Status Review:* ${created.reviewStatus?.whatsapp || 'PENDING'}
+🔗 *Link Produk:* ${created.url || (created.id ? `https://wa.me/p/${created.id}` : '-')}
+
+_Produk telah otomatis terdaftar di katalog WhatsApp Business Anda._`;
+
+          await sock.sendMessage(m.chat, {
+            image: imgBuffer,
+            caption: hasilTeks
+          }, { quoted: m });
+
+        } catch (errUpload) {
+          console.error("\x1b[31m[ERROR UPLOAD KATALOG]:\x1b[0m", errUpload);
+          reply(`❌ *Gagal mengunggah produk ke katalog:*\n${errUpload?.message || errUpload}\n\n_Pastikan nomor bot adalah akun WhatsApp Business (SMB)._`);
+        }
+      }
+        break
+
+      case "getkatalog":
+      case "listkatalog":
+      case "katalog":
+      case "listproduk": {
+        const { fetchCatalog, formatRupiah } = require('./lib/catalog');
+
+        let targetJid = sock.user.id;
+        if (text) {
+          const cleanNum = text.replace(/[^0-9]/g, '');
+          if (cleanNum) targetJid = cleanNum + '@s.whatsapp.net';
+        } else if (m.quoted && m.quoted.sender) {
+          targetJid = m.quoted.sender;
+        }
+
+        try {
+          reply("⏳ _Sedang memuat data katalog produk..._");
+          const res = await fetchCatalog(sock, { jid: targetJid, limit: 15 });
+          const products = res?.products || [];
+
+          if (!products.length) {
+            return reply(`📦 *Katalog tidak ditemukan atau belum memiliki produk.*\n\n_Gunakan ${prefix}addproduk untuk menambahkan produk pertama Anda._`);
+          }
+
+          let daftarTeks = `╭───〔 *KATALOG PRODUK WHATSAPP* 〕───\n`;
+          daftarTeks += `│ Total Ditemukan: *${products.length} produk*\n`;
+          daftarTeks += `╰──────────────────────────────\n\n`;
+
+          products.forEach((p, idx) => {
+            daftarTeks += `*${idx + 1}. ${p.name || 'Produk Tanpa Nama'}*\n`;
+            daftarTeks += `   ⋄ *Harga:* ${formatRupiah(p.price)}\n`;
+            daftarTeks += `   ⋄ *ID Produk:* \`${p.id}\`\n`;
+            if (p.retailerId) daftarTeks += `   ⋄ *SKU:* ${p.retailerId}\n`;
+            if (p.reviewStatus?.whatsapp) daftarTeks += `   ⋄ *Review:* ${p.reviewStatus.whatsapp}\n`;
+            if (p.description) daftarTeks += `   ⋄ *Deskripsi:* ${p.description.length > 80 ? p.description.slice(0, 80) + '...' : p.description}\n`;
+            if (p.url) daftarTeks += `   ⋄ *Link:* ${p.url}\n`;
+            daftarTeks += `\n`;
+          });
+
+          daftarTeks += `💡 *Tips:* Untuk menghapus produk, gunakan:\n\`${prefix}delproduk <ID_PRODUK>\``;
+          reply(daftarTeks.trim());
+
+        } catch (errGet) {
+          console.error("\x1b[31m[ERROR GET KATALOG]:\x1b[0m", errGet);
+          reply(`❌ *Gagal mengambil katalog:*\n${errGet?.message || errGet}\n\n_Pastikan nomor yang dituju memiliki katalog WhatsApp Business._`);
+        }
+      }
+        break
+
+      case "delproduk":
+      case "delproduct":
+      case "hapusproduk": {
+        if (!isCreator) return reply("❌ *Perintah ini khusus Owner bot / Pemilik Toko!*");
+
+        const { removeCatalogProducts } = require('./lib/catalog');
+
+        if (!text || !text.trim()) {
+          return reply(`❌ *Masukkan ID Produk yang ingin dihapus!*\n\n*Format:* \`${prefix + command} <ID_PRODUK>\`\n*Contoh:* \`${prefix + command} 9876543210123\`\n\n_Tips: Cek ID produk menggunakan perintah \`${prefix}getkatalog\`_`);
+        }
+
+        const productId = text.trim();
+        try {
+          reply(`⏳ _Sedang menghapus produk \`${productId}\` dari katalog..._`);
+          const res = await removeCatalogProducts(sock, productId);
+          reply(`✅ *Produk berhasil dihapus dari katalog!*\n⋄ ID Produk: \`${productId}\`\n⋄ Terhapus: ${res?.deleted ?? 1} item`);
+        } catch (errDel) {
+          console.error("\x1b[31m[ERROR DEL PRODUK]:\x1b[0m", errDel);
+          reply(`❌ *Gagal menghapus produk:*\n${errDel?.message || errDel}`);
+        }
+      }
+        break
+
+      case "koleksi":
+      case "listkoleksi":
+      case "getkoleksi": {
+        const { fetchCollections } = require('./lib/catalog');
+
+        try {
+          reply("⏳ _Sedang mengambil daftar koleksi katalog..._");
+          const res = await fetchCollections(sock);
+          const collections = res?.collections || [];
+
+          if (!collections.length) {
+            return reply("📁 *Belum ada koleksi/kategori produk yang dibuat di akun WhatsApp Business ini.*");
+          }
+
+          let teksKoleksi = `╭───〔 *KOLEKSI KATALOG BISNIS* 〕───\n`;
+          teksKoleksi += `│ Total: *${collections.length} koleksi*\n`;
+          teksKoleksi += `╰────────────────────────────\n\n`;
+
+          collections.forEach((c, idx) => {
+            teksKoleksi += `*${idx + 1}. ${c.name}*\n`;
+            teksKoleksi += `   ⋄ ID: \`${c.id}\`\n`;
+            teksKoleksi += `   ⋄ Jumlah Produk: ${c.products ? c.products.length : 0}\n`;
+            if (c.status?.status) teksKoleksi += `   ⋄ Status: ${c.status.status}\n`;
+            teksKoleksi += `\n`;
+          });
+
+          reply(teksKoleksi.trim());
+        } catch (errKol) {
+          console.error("\x1b[31m[ERROR GET KOLEKSI]:\x1b[0m", errKol);
+          reply(`❌ *Gagal mengambil koleksi:*\n${errKol?.message || errKol}`);
         }
       }
         break

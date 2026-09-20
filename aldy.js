@@ -1160,6 +1160,7 @@ _Geser kartu ke samping untuk melihat foto slide!_`.trim();
         const { parseCatalogNode } = require("@whiskeysockets/baileys/lib/Utils/business");
 
         const botJid = jidNormalizedUser(sock.user.id);
+        const credsPlatform = sock.authState?.creds?.platform || 'unknown';
         const startTime = Date.now();
 
         const raceTimeout = (promise, ms) => Promise.race([
@@ -1194,26 +1195,36 @@ _Geser kartu ke samping untuk melihat foto slide!_`.trim();
 
 ⏱️ Waktu Respons: ${elapsed}ms
 🔗 JID Bot: ${botJid}
+🏷️ Platform: ${credsPlatform}
 📦 Produk Ditemukan: ${jumlah}
 ${jumlah > 0 ? `🏷️ Contoh: ${parsed.products[0].name || '(tanpa nama)'}` : ''}
 
-_Server WhatsApp merespons query katalog dengan baik. Semua fitur katalog siap digunakan._`);
+_Server WhatsApp merespons query katalog dengan baik._`);
 
         } catch (errTest) {
           const elapsed = Date.now() - startTime;
+          const isBizPlatform = credsPlatform === 'smba' || credsPlatform === 'smbi';
+
           reply(`❌ *KATALOG TIDAK MERESPONS*
 
-⏱️ Timeout setelah: ${elapsed}ms
+⏱️ Timeout: ${elapsed}ms
 🔗 JID Bot: ${botJid}
+🏷️ Platform: ${credsPlatform} ${isBizPlatform ? '✅ (Business)' : '⚠️ (BUKAN Business!)'}
 📛 Error: ${errTest?.message || errTest}
 
-*Solusi yang harus dilakukan:*
-1. Buka *WhatsApp Business* di HP nomor bot
-2. Masuk ke *Setelan > Fitur Bisnis > Katalog*
-3. Tambahkan *minimal 1 produk manual* dari HP
-4. Setelah itu, coba perintah ini lagi
+${!isBizPlatform ? `*⚠️ MASALAH TERDETEKSI: Platform = "${credsPlatform}"*
+Sesi bot ini BUKAN sesi WhatsApp Business!
+Server WA menolak query katalog dari sesi non-bisnis.
 
-_Server WhatsApp tidak mengaktifkan endpoint katalog sampai fitur Katalog pernah dibuka dan digunakan dari aplikasi HP._`);
+*SOLUSI: Hapus sesi lama & pairing ulang:*
+1. Stop bot
+2. Hapus folder *session* (atau auth_info)
+3. Jalankan bot ulang
+4. Scan QR / pairing dari HP *WhatsApp Business*
+5. Coba /cekkatalog lagi` : `*Sesi sudah Business, kemungkinan masalah jaringan.*
+Coba restart bot atau cek koneksi server.`}
+
+_Fitur katalog hanya bisa diakses jika sesi bot dibuat dari aplikasi WhatsApp Business (bukan WA biasa)._`);
         }
       }
         break

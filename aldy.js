@@ -1306,7 +1306,12 @@ _Produk telah otomatis terdaftar di katalog WhatsApp Business Anda._`;
 
         } catch (errGet) {
           console.error("\x1b[31m[ERROR GET KATALOG]:\x1b[0m", errGet);
-          reply(`❌ *Gagal mengambil katalog:*\n${errGet?.message || errGet}\n\n_Pastikan nomor yang dituju memiliki katalog WhatsApp Business._`);
+          const isTimeout = errGet?.message?.includes('Timed Out') || errGet?.output?.statusCode === 408;
+          if (isTimeout) {
+            reply(`❌ *Permintaan Katalog Habis Waktu (Timed Out)!*\n\nServer WhatsApp tidak merespons. Pastikan nomor target atau bot terdaftar sebagai akun *WhatsApp Business* dan fitur katalog telah aktif.`);
+          } else {
+            reply(`❌ *Gagal mengambil katalog:*\n${errGet?.message || errGet}\n\n_Pastikan nomor yang dituju memiliki katalog WhatsApp Business._`);
+          }
         }
       }
         break
@@ -1363,7 +1368,12 @@ _Produk telah otomatis terdaftar di katalog WhatsApp Business Anda._`;
           reply(teksKoleksi.trim());
         } catch (errKol) {
           console.error("\x1b[31m[ERROR GET KOLEKSI]:\x1b[0m", errKol);
-          reply(`❌ *Gagal mengambil koleksi:*\n${errKol?.message || errKol}`);
+          const isTimeout = errKol?.message?.includes('Timed Out') || errKol?.output?.statusCode === 408;
+          if (isTimeout) {
+            reply(`❌ *Permintaan Koleksi Habis Waktu (Timed Out)!*\n\n*Penyebab umum:*\n1. Nomor bot *bukan akun WhatsApp Business* (fitur katalog hanya ada di WA Business).\n2. Akun WhatsApp Business Anda *belum pernah membuat koleksi/kategori* di aplikasi WA Business.\n3. Coba perintah *${prefix}getkatalog* untuk mengecek daftar produk langsung.`);
+          } else {
+            reply(`❌ *Gagal mengambil koleksi:*\n${errKol?.message || errKol}\n\n_Pastikan nomor bot adalah akun WhatsApp Business._`);
+          }
         }
       }
         break

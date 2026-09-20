@@ -1149,10 +1149,80 @@ _Geser kartu ke samping untuk melihat foto slide!_`.trim();
         break
 
       //=============={ Fitur Katalog WhatsApp Business }==============//
+      case "cekkatalog":
+      case "checkcatalog":
+      case "testkatalog": {
+        if (!isCreator) return reply("❌ *Perintah ini khusus Owner bot!*");
+
+        reply("⏳ _Menguji koneksi katalog ke server WhatsApp (maks 15 detik)..._");
+
+        const { jidNormalizedUser } = require("@whiskeysockets/baileys");
+        const { parseCatalogNode } = require("@whiskeysockets/baileys/lib/Utils/business");
+
+        const botJid = jidNormalizedUser(sock.user.id);
+        const startTime = Date.now();
+
+        const raceTimeout = (promise, ms) => Promise.race([
+          promise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms))
+        ]);
+
+        try {
+          const result = await raceTimeout(sock.query({
+            tag: 'iq',
+            attrs: {
+              to: '@s.whatsapp.net',
+              type: 'get',
+              xmlns: 'w:biz:catalog'
+            },
+            content: [{
+              tag: 'product_catalog',
+              attrs: { jid: botJid, 'allow_shop_source': 'true' },
+              content: [
+                { tag: 'limit', attrs: {}, content: Buffer.from('1') },
+                { tag: 'width', attrs: {}, content: Buffer.from('100') },
+                { tag: 'height', attrs: {}, content: Buffer.from('100') }
+              ]
+            }]
+          }), 15000);
+
+          const elapsed = Date.now() - startTime;
+          const parsed = parseCatalogNode(result);
+          const jumlah = parsed?.products?.length || 0;
+
+          reply(`✅ *KATALOG AKTIF & BERFUNGSI!*
+
+⏱️ Waktu Respons: ${elapsed}ms
+🔗 JID Bot: ${botJid}
+📦 Produk Ditemukan: ${jumlah}
+${jumlah > 0 ? `🏷️ Contoh: ${parsed.products[0].name || '(tanpa nama)'}` : ''}
+
+_Server WhatsApp merespons query katalog dengan baik. Semua fitur katalog siap digunakan._`);
+
+        } catch (errTest) {
+          const elapsed = Date.now() - startTime;
+          reply(`❌ *KATALOG TIDAK MERESPONS*
+
+⏱️ Timeout setelah: ${elapsed}ms
+🔗 JID Bot: ${botJid}
+📛 Error: ${errTest?.message || errTest}
+
+*Solusi yang harus dilakukan:*
+1. Buka *WhatsApp Business* di HP nomor bot
+2. Masuk ke *Setelan > Fitur Bisnis > Katalog*
+3. Tambahkan *minimal 1 produk manual* dari HP
+4. Setelah itu, coba perintah ini lagi
+
+_Server WhatsApp tidak mengaktifkan endpoint katalog sampai fitur Katalog pernah dibuka dan digunakan dari aplikasi HP._`);
+        }
+      }
+        break
+
       case "katalogmenu":
       case "menukatalog":
       case "kataloghelp": {
         const teksKatalog = `╭───〔 *KATALOG WHATSAPP BUSINESS* 〕───
+│ ⋄ *${prefix}cekkatalog* ☇ Cek apakah koneksi katalog aktif
 │ ⋄ *${prefix}addproduk* ☇ Tambah produk baru ke katalog
 │ ⋄ *${prefix}getkatalog* ☇ Tampilkan daftar produk katalog
 │ ⋄ *${prefix}delproduk* ☇ Hapus produk dari katalog

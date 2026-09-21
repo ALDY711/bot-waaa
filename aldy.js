@@ -128,6 +128,26 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
       .jpeg({ quality: 80 })
       .toBuffer()
 
+    // Fake File / Fake Document (10.000 TB)
+    const fdoc = {
+      key: {
+        participant: '0@s.whatsapp.net',
+        remoteJid: 'status@broadcast',
+        fromMe: false,
+        id: 'ALDY-BOT'
+      },
+      message: {
+        documentMessage: {
+          title: 'ALDY Base Bot',
+          jpegThumbnail: thumb,
+          mimetype: 'application/pdf',
+          fileName: 'ALDY Base - 10000 TB.pdf',
+          fileLength: '10995116277760000',
+          pageCount: 10000
+        }
+      }
+    };
+
     //======={ case button location }=======//
     switch (command) {
       case "menu": {
@@ -221,9 +241,9 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
                             },
                             {
                               header: "",
-                              title: "🛍️ Katalog Bisnis",
-                              description: "Menu kelola katalog produk WhatsApp",
-                              id: "/katalogmenu",
+                              title: "📸 Screenshot Web",
+                              description: "Tangkapan layar website desktop / mobile",
+                              id: "/ssweb",
                             },
                             {
                               header: "",
@@ -248,10 +268,10 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
               ],
               headerType: 6
             }
-          }, { quoted: m });
+          }, { quoted: fdoc });
         } catch (errMenu) {
           console.error("\x1b[31m[ERROR MENU BUTTON]:\x1b[0m", errMenu);
-          reply(`${msg}\n\n${anu}`);
+          await sock.sendMessage(m.chat, { text: `${msg}\n\n${anu}` }, { quoted: fdoc });
         }
       }
         break
@@ -670,28 +690,144 @@ jika kamu menginginkan base script ini silahkan klik tombol di bawah ini
             await sock.sendMessage(m.chat, { video: res.data, caption: text.trim(), mimetype: contentType }, { quoted: m });
           } else if (/audio/i.test(contentType)) {
             await sock.sendMessage(m.chat, { audio: res.data, mimetype: contentType }, { quoted: m });
-          } else if (/json/i.test(contentType)) {
-            try {
-              const jsonStr = JSON.stringify(JSON.parse(res.data.toString()), null, 2);
-              if (jsonStr.length > 5000) {
-                await sock.sendMessage(m.chat, { document: Buffer.from(jsonStr), mimetype: 'application/json', fileName: 'response.json' }, { quoted: m });
-              } else {
-                reply(jsonStr);
-              }
-            } catch {
-              reply(res.data.toString().slice(0, 4000));
-            }
           } else {
-            const textData = res.data.toString();
-            if (textData.length > 5000) {
-              await sock.sendMessage(m.chat, { document: Buffer.from(textData), mimetype: 'text/plain', fileName: 'result.txt' }, { quoted: m });
+            let outText = res.data.toString();
+            try {
+              outText = JSON.stringify(JSON.parse(outText), null, 2);
+            } catch (_) {}
+
+            if (outText.length > 60000) {
+              for (let i = 0; i < outText.length; i += 60000) {
+                await reply(outText.slice(i, i + 60000));
+              }
             } else {
-              reply(textData);
+              await reply(outText);
             }
           }
         } catch (err) {
           console.error(err);
           reply(`*Gagal mengambil data:* ${err.response?.statusText || err.message}`);
+        }
+      }
+        break
+
+      //=============={ Fitur Screenshot Web (SSWEB) }==============//
+      case "ssweb":
+      case "ss":
+      case "sspc":
+      case "sshp":
+      case "ssmobile":
+      case "ssfull":
+      case "screenshot":
+      case "screenshoot": {
+        let inputUrl = text ? text.trim() : (m.quoted?.text ? m.quoted.text.trim() : '');
+        if (!inputUrl) {
+          return reply(`*Masukkan URL website yang ingin di-screenshot!*\n\n*Format Penggunaan:*\n• Desktop (PC): \`${prefix}ssweb <url>\`\n• Mobile (HP): \`${prefix}sshp <url>\`\n• Layar Penuh: \`${prefix}ssfull <url>\`\n\n*Contoh:* ${prefix}ssweb https://github.com`);
+        }
+
+        // Mode tampilan: desktop, mobile, atau fullpage
+        let mode = 'desktop';
+        if (command === 'sshp' || command === 'ssmobile' || /--mobile|-m\b/i.test(inputUrl)) {
+          mode = 'mobile';
+        } else if (command === 'ssfull' || /--full|-f\b/i.test(inputUrl)) {
+          mode = 'full';
+        }
+
+        // Hapus flag opsi dari input URL
+        inputUrl = inputUrl.replace(/--(mobile|full)|-[mf]\b/gi, '').trim();
+
+        // Ekstrak URL
+        const urlMatch = inputUrl.match(/https?:\/\/[^\s]+/) || inputUrl.match(/[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}[^\s]*/);
+        if (!urlMatch) {
+          return reply(`*Format URL tidak valid!*\nPastikan memasukkan alamat website yang benar.`);
+        }
+
+        let targetUrl = urlMatch[0];
+        if (!/^https?:\/\//i.test(targetUrl)) {
+          targetUrl = `https://${targetUrl}`;
+        }
+
+        const modeLabel = mode === 'mobile' ? '📱 Mobile (HP)' : mode === 'full' ? '📜 Full Page' : '🖥️ Desktop (PC)';
+
+        reply(`_Sedang mengambil screenshot web (${modeLabel})..._\n_Mohon tunggu sebentar..._`);
+
+        try {
+          let buffer = null;
+
+          if (mode === 'mobile') {
+            const endpoints = [
+              `https://api.microlink.io/?url=${encodeURIComponent(targetUrl)}&screenshot=true&meta=false&embed=screenshot.url&viewport.width=414&viewport.height=896&viewport.isMobile=true`,
+              `https://image.thum.io/get/width/414/crop/896/noanimate/${targetUrl}`
+            ];
+            for (const ep of endpoints) {
+              try {
+                const res = await axios.get(ep, {
+                  responseType: 'arraybuffer',
+                  timeout: 30000,
+                  headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15' }
+                });
+                if (res.data && res.data.length > 1000) {
+                  buffer = res.data;
+                  break;
+                }
+              } catch (_) {}
+            }
+          } else if (mode === 'full') {
+            const endpoints = [
+              `https://image.thum.io/get/fullpage/${targetUrl}`,
+              `https://api.microlink.io/?url=${encodeURIComponent(targetUrl)}&screenshot=true&meta=false&embed=screenshot.url&screenshot.fullPage=true`
+            ];
+            for (const ep of endpoints) {
+              try {
+                const res = await axios.get(ep, {
+                  responseType: 'arraybuffer',
+                  timeout: 35000,
+                  headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+                });
+                if (res.data && res.data.length > 1000) {
+                  buffer = res.data;
+                  break;
+                }
+              } catch (_) {}
+            }
+          } else {
+            const endpoints = [
+              `https://image.thum.io/get/width/1280/crop/800/noanimate/${targetUrl}`,
+              `https://api.microlink.io/?url=${encodeURIComponent(targetUrl)}&screenshot=true&meta=false&embed=screenshot.url`,
+              `https://api.popcat.xyz/screenshot?url=${encodeURIComponent(targetUrl)}`
+            ];
+            for (const ep of endpoints) {
+              try {
+                const res = await axios.get(ep, {
+                  responseType: 'arraybuffer',
+                  timeout: 30000,
+                  headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+                });
+                if (res.data && res.data.length > 1000) {
+                  buffer = res.data;
+                  break;
+                }
+              } catch (_) {}
+            }
+          }
+
+          if (!buffer) {
+            return reply(`*Gagal mengambil screenshot web!*\nWebsite tidak dapat dijangkau atau memblokir akses bot.`);
+          }
+
+          const caption = `📸 *SCREENSHOT WEB*\n\n` +
+            `🌐 *URL:* ${targetUrl}\n` +
+            `🖥️ *Tampilan:* ${modeLabel}\n` +
+            `⚡ *Status:* Berhasil diambil`;
+
+          await sock.sendMessage(m.chat, {
+            image: buffer,
+            caption: caption
+          }, { quoted: m });
+
+        } catch (err) {
+          console.error('[ERROR SSWEB]:', err);
+          reply(`*Terjadi kesalahan saat screenshot:* ${err.message}`);
         }
       }
         break
@@ -1154,316 +1290,7 @@ _Geser kartu ke samping untuk melihat foto slide!_`.trim();
       }
         break
 
-      //=============={ Fitur Katalog WhatsApp Business }==============//
-      case "cekkatalog":
-      case "checkcatalog":
-      case "testkatalog": {
-        if (!isCreator) return reply("❌ *Perintah ini khusus Owner bot!*");
 
-        reply("⏳ _Menguji koneksi katalog ke server WhatsApp (maks 15 detik)..._");
-
-        const { jidNormalizedUser } = require("@whiskeysockets/baileys");
-        const { parseCatalogNode } = require("@whiskeysockets/baileys/lib/Utils/business");
-
-        const botJid = jidNormalizedUser(sock.user.id);
-        const credsPlatform = sock.authState?.creds?.platform || 'unknown';
-        const startTime = Date.now();
-
-        const raceTimeout = (promise, ms) => Promise.race([
-          promise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms))
-        ]);
-
-        try {
-          const result = await raceTimeout(sock.query({
-            tag: 'iq',
-            attrs: {
-              to: '@s.whatsapp.net',
-              type: 'get',
-              xmlns: 'w:biz:catalog'
-            },
-            content: [{
-              tag: 'product_catalog',
-              attrs: { jid: botJid, 'allow_shop_source': 'true' },
-              content: [
-                { tag: 'limit', attrs: {}, content: Buffer.from('1') },
-                { tag: 'width', attrs: {}, content: Buffer.from('100') },
-                { tag: 'height', attrs: {}, content: Buffer.from('100') }
-              ]
-            }]
-          }), 15000);
-
-          const elapsed = Date.now() - startTime;
-          const parsed = parseCatalogNode(result);
-          const jumlah = parsed?.products?.length || 0;
-
-          reply(`✅ *KATALOG AKTIF & BERFUNGSI!*
-
-⏱️ Waktu Respons: ${elapsed}ms
-🔗 JID Bot: ${botJid}
-🏷️ Platform: ${credsPlatform}
-📦 Produk Ditemukan: ${jumlah}
-${jumlah > 0 ? `🏷️ Contoh: ${parsed.products[0].name || '(tanpa nama)'}` : ''}
-
-_Server WhatsApp merespons query katalog dengan baik._`);
-
-        } catch (errTest) {
-          const elapsed = Date.now() - startTime;
-          const isBizPlatform = credsPlatform === 'smba' || credsPlatform === 'smbi';
-
-          reply(`❌ *KATALOG TIDAK MERESPONS*
-
-⏱️ Timeout: ${elapsed}ms
-🔗 JID Bot: ${botJid}
-🏷️ Platform: ${credsPlatform} ${isBizPlatform ? '✅ (Business)' : '⚠️ (BUKAN Business!)'}
-📛 Error: ${errTest?.message || errTest}
-
-${!isBizPlatform ? `*⚠️ MASALAH TERDETEKSI: Platform = "${credsPlatform}"*
-Sesi bot ini BUKAN sesi WhatsApp Business!
-Server WA menolak query katalog dari sesi non-bisnis.
-
-*SOLUSI: Hapus sesi lama & pairing ulang:*
-1. Stop bot
-2. Hapus folder *session* (atau auth_info)
-3. Jalankan bot ulang
-4. Scan QR / pairing dari HP *WhatsApp Business*
-5. Coba /cekkatalog lagi` : `*Sesi sudah Business, kemungkinan masalah jaringan.*
-Coba restart bot atau cek koneksi server.`}
-
-_Fitur katalog hanya bisa diakses jika sesi bot dibuat dari aplikasi WhatsApp Business (bukan WA biasa)._`);
-        }
-      }
-        break
-
-      case "katalogmenu":
-      case "menukatalog":
-      case "kataloghelp": {
-        const teksKatalog = `╭───〔 *KATALOG WHATSAPP BUSINESS* 〕───
-│ ⋄ *${prefix}cekkatalog* ☇ Cek apakah koneksi katalog aktif
-│ ⋄ *${prefix}addproduk* ☇ Tambah produk baru ke katalog
-│ ⋄ *${prefix}getkatalog* ☇ Tampilkan daftar produk katalog
-│ ⋄ *${prefix}delproduk* ☇ Hapus produk dari katalog
-│ ⋄ *${prefix}koleksi* ☇ Lihat daftar koleksi/kategori
-╰──────────────────────────
-
-📌 *Petunjuk Penggunaan:*
-1. *Tambah Produk:*
-   Kirim atau balas foto produk dengan format:
-   \`${prefix}addproduk Nama | Harga | Deskripsi | [SKU]\`
-   _Contoh:_
-   \`${prefix}addproduk Kopi Robusta 250g | 45000 | Biji kopi asli pilihan | SKU-01\`
-
-2. *Lihat Produk:*
-   Ketik \`${prefix}getkatalog\` untuk melihat produk toko Anda, atau \`${prefix}getkatalog 628xxx\` untuk nomor lain.
-
-3. *Hapus Produk:*
-   Ketik \`${prefix}delproduk <ID_PRODUK>\`
-   _(ID produk bisa dilihat pada daftar getkatalog)_
-
-⚠️ *Catatan:* Nomor bot wajib terdaftar sebagai WhatsApp Business (SMB).`;
-        reply(teksKatalog);
-      }
-        break
-
-      case "addproduk":
-      case "addproduct":
-      case "uploadkatalog":
-      case "tambahproduk": {
-        if (!isCreator) return reply("❌ *Perintah ini khusus Owner bot / Pemilik Toko!*");
-
-        const { createCatalogProduct, formatRupiah, downloadMedia } = require('./lib/catalog');
-
-        // Deteksi gambar dari reply pesan atau pesan saat ini
-        let qMsg = m.msg?.contextInfo?.quotedMessage;
-        let viewOnce = qMsg?.viewOnceMessageV2?.message ||
-          qMsg?.viewOnceMessage?.message ||
-          qMsg?.viewOnceMessageV2Extension?.message ||
-          qMsg;
-
-        let imgMedia = viewOnce?.imageMessage || m.quoted?.message?.imageMessage || m.message?.imageMessage || m.msg?.imageMessage;
-
-        if (!imgMedia) {
-          return reply(`🛍️ *CARA UPLOAD PRODUK KE KATALOG:*
-
-Balas (reply) foto produk atau kirim foto dengan caption perintah berikut:
-*${prefix + command} Nama Produk | Harga | Deskripsi | [SKU]*
-
-*Contoh:*
-*${prefix + command} Kaos Distro Pria | 75000 | Bahan cotton combed 30s adem | SKU-TS-01*
-
-_Catatan: Nomor bot harus merupakan nomor WhatsApp Business._`);
-        }
-
-        if (!text || !text.includes('|')) {
-          return reply(`❌ *Format teks salah!*\n\nGunakan pemisah tanda pagar tegak (|):\n*${prefix + command} Nama | Harga | Deskripsi | [SKU Opsional]*\n\n*Contoh:*\n*${prefix + command} Sepatu Sneakers | 150000 | Bahan kulit sintetis premium | SKU-SP-01*`);
-        }
-
-        const parts = text.split('|').map(s => s ? s.trim() : '');
-        const pName = parts[0];
-        const pPrice = Number(parts[1]);
-        const pDesc = parts[2] || '';
-        const pSku = parts[3] || '';
-
-        if (!pName) return reply("❌ *Nama produk tidak boleh kosong!*");
-        if (isNaN(pPrice) || pPrice < 0) return reply("❌ *Harga produk harus berupa angka yang valid!* (Contoh: 50000)");
-
-        try {
-          reply("⏳ _Sedang mengunduh foto dan mendaftarkan produk ke katalog WhatsApp Business..._");
-
-          const imgBuffer = await downloadMedia(imgMedia, 'image');
-          if (!imgBuffer || imgBuffer.length === 0) {
-            return reply("❌ *Gagal memproses file gambar produk.*");
-          }
-
-          const created = await createCatalogProduct(sock, {
-            name: pName,
-            description: pDesc,
-            price: pPrice,
-            currency: 'IDR',
-            retailerId: pSku,
-            images: [imgBuffer],
-            originCountryCode: 'ID',
-            isHidden: false
-          });
-
-          const hasilTeks = `✅ *PRODUK BERHASIL DITAMBAHKAN KE KATALOG!*
-
-🛍️ *Nama:* ${created.name || pName}
-💰 *Harga:* ${formatRupiah(created.price || pPrice)}
-🏷️ *ID Produk:* \`${created.id || '-'}\`
-📦 *SKU / Kode:* ${created.retailerId || pSku || '-'}
-📝 *Deskripsi:* ${created.description || pDesc || '-'}
-🔍 *Status Review:* ${created.reviewStatus?.whatsapp || 'PENDING'}
-🔗 *Link Produk:* ${created.url || (created.id ? `https://wa.me/p/${created.id}` : '-')}
-
-_Produk telah otomatis terdaftar di katalog WhatsApp Business Anda._`;
-
-          await sock.sendMessage(m.chat, {
-            image: imgBuffer,
-            caption: hasilTeks
-          }, { quoted: m });
-
-        } catch (errUpload) {
-          console.error("\x1b[31m[ERROR UPLOAD KATALOG]:\x1b[0m", errUpload);
-          reply(`❌ *Gagal mengunggah produk ke katalog:*\n${errUpload?.message || errUpload}\n\n_Pastikan nomor bot adalah akun WhatsApp Business (SMB)._`);
-        }
-      }
-        break
-
-      case "getkatalog":
-      case "listkatalog":
-      case "katalog":
-      case "listproduk": {
-        const { fetchCatalog, formatRupiah } = require('./lib/catalog');
-
-        let targetJid = sock.user.id;
-        if (text) {
-          const cleanNum = text.replace(/[^0-9]/g, '');
-          if (cleanNum) targetJid = cleanNum + '@s.whatsapp.net';
-        } else if (m.quoted && m.quoted.sender) {
-          targetJid = m.quoted.sender;
-        }
-
-        try {
-          reply("⏳ _Sedang memuat data katalog produk..._");
-          const res = await fetchCatalog(sock, { jid: targetJid, limit: 15 });
-          const products = res?.products || [];
-
-          if (!products.length) {
-            return reply(`📦 *Katalog tidak ditemukan atau belum memiliki produk.*\n\n_Gunakan ${prefix}addproduk untuk menambahkan produk pertama Anda._`);
-          }
-
-          let daftarTeks = `╭───〔 *KATALOG PRODUK WHATSAPP* 〕───\n`;
-          daftarTeks += `│ Total Ditemukan: *${products.length} produk*\n`;
-          daftarTeks += `╰──────────────────────────────\n\n`;
-
-          products.forEach((p, idx) => {
-            daftarTeks += `*${idx + 1}. ${p.name || 'Produk Tanpa Nama'}*\n`;
-            daftarTeks += `   ⋄ *Harga:* ${formatRupiah(p.price)}\n`;
-            daftarTeks += `   ⋄ *ID Produk:* \`${p.id}\`\n`;
-            if (p.retailerId) daftarTeks += `   ⋄ *SKU:* ${p.retailerId}\n`;
-            if (p.reviewStatus?.whatsapp) daftarTeks += `   ⋄ *Review:* ${p.reviewStatus.whatsapp}\n`;
-            if (p.description) daftarTeks += `   ⋄ *Deskripsi:* ${p.description.length > 80 ? p.description.slice(0, 80) + '...' : p.description}\n`;
-            if (p.url) daftarTeks += `   ⋄ *Link:* ${p.url}\n`;
-            daftarTeks += `\n`;
-          });
-
-          daftarTeks += `💡 *Tips:* Untuk menghapus produk, gunakan:\n\`${prefix}delproduk <ID_PRODUK>\``;
-          reply(daftarTeks.trim());
-
-        } catch (errGet) {
-          console.error("\x1b[31m[ERROR GET KATALOG]:\x1b[0m", errGet);
-          const isTimeout = errGet?.message?.includes('Timed Out') || errGet?.output?.statusCode === 408;
-          if (isTimeout) {
-            reply(`❌ *Permintaan Katalog Habis Waktu (Timed Out)!*\n\nServer WhatsApp tidak merespons. Pastikan nomor target atau bot terdaftar sebagai akun *WhatsApp Business* dan fitur katalog telah aktif.`);
-          } else {
-            reply(`❌ *Gagal mengambil katalog:*\n${errGet?.message || errGet}\n\n_Pastikan nomor yang dituju memiliki katalog WhatsApp Business._`);
-          }
-        }
-      }
-        break
-
-      case "delproduk":
-      case "delproduct":
-      case "hapusproduk": {
-        if (!isCreator) return reply("❌ *Perintah ini khusus Owner bot / Pemilik Toko!*");
-
-        const { removeCatalogProducts } = require('./lib/catalog');
-
-        if (!text || !text.trim()) {
-          return reply(`❌ *Masukkan ID Produk yang ingin dihapus!*\n\n*Format:* \`${prefix + command} <ID_PRODUK>\`\n*Contoh:* \`${prefix + command} 9876543210123\`\n\n_Tips: Cek ID produk menggunakan perintah \`${prefix}getkatalog\`_`);
-        }
-
-        const productId = text.trim();
-        try {
-          reply(`⏳ _Sedang menghapus produk \`${productId}\` dari katalog..._`);
-          const res = await removeCatalogProducts(sock, productId);
-          reply(`✅ *Produk berhasil dihapus dari katalog!*\n⋄ ID Produk: \`${productId}\`\n⋄ Terhapus: ${res?.deleted ?? 1} item`);
-        } catch (errDel) {
-          console.error("\x1b[31m[ERROR DEL PRODUK]:\x1b[0m", errDel);
-          reply(`❌ *Gagal menghapus produk:*\n${errDel?.message || errDel}`);
-        }
-      }
-        break
-
-      case "koleksi":
-      case "listkoleksi":
-      case "getkoleksi": {
-        const { fetchCollections } = require('./lib/catalog');
-
-        try {
-          reply("⏳ _Sedang mengambil daftar koleksi katalog..._");
-          const res = await fetchCollections(sock);
-          const collections = res?.collections || [];
-
-          if (!collections.length) {
-            return reply("📁 *Belum ada koleksi/kategori produk yang dibuat di akun WhatsApp Business ini.*");
-          }
-
-          let teksKoleksi = `╭───〔 *KOLEKSI KATALOG BISNIS* 〕───\n`;
-          teksKoleksi += `│ Total: *${collections.length} koleksi*\n`;
-          teksKoleksi += `╰────────────────────────────\n\n`;
-
-          collections.forEach((c, idx) => {
-            teksKoleksi += `*${idx + 1}. ${c.name}*\n`;
-            teksKoleksi += `   ⋄ ID: \`${c.id}\`\n`;
-            teksKoleksi += `   ⋄ Jumlah Produk: ${c.products ? c.products.length : 0}\n`;
-            if (c.status?.status) teksKoleksi += `   ⋄ Status: ${c.status.status}\n`;
-            teksKoleksi += `\n`;
-          });
-
-          reply(teksKoleksi.trim());
-        } catch (errKol) {
-          console.error("\x1b[31m[ERROR GET KOLEKSI]:\x1b[0m", errKol);
-          const isTimeout = errKol?.message?.includes('Timed Out') || errKol?.output?.statusCode === 408;
-          if (isTimeout) {
-            reply(`❌ *Permintaan Koleksi Habis Waktu (Timed Out)!*\n\n*Penyebab umum:*\n1. Nomor bot *bukan akun WhatsApp Business* (fitur katalog hanya ada di WA Business).\n2. Akun WhatsApp Business Anda *belum pernah membuat koleksi/kategori* di aplikasi WA Business.\n3. Coba perintah *${prefix}getkatalog* untuk mengecek daftar produk langsung.`);
-          } else {
-            reply(`❌ *Gagal mengambil koleksi:*\n${errKol?.message || errKol}\n\n_Pastikan nomor bot adalah akun WhatsApp Business._`);
-          }
-        }
-      }
-        break
 
       //=============={ Fitur Status di Grup }==============//
       case "statusgrupmenu":

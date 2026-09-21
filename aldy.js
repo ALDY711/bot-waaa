@@ -1519,28 +1519,24 @@ Mengirim WhatsApp Story 24 jam (\`status@broadcast\`) yang HANYA bisa dilihat ol
           const media = await extractMedia(m);
 
           if (media) {
-            reply("⏳ _Sedang memproses dan mengirim status grup berformat media..._");
             const caption = text || media.caption || '';
             await sendGroupStatus(sock, m.chat, {
               buffer: media.buffer,
               mediaType: media.mediaType,
               text: caption
             });
-            reply("✅ *Status media berhasil dikirim ke grup!*");
           } else {
             if (!text || !text.trim()) {
               return reply(`❌ *Masukkan teks status atau balas media (gambar/video)!*\n\n*Contoh:* \`${prefix + command} Pengumuman penting untuk semua anggota grup!\``);
             }
 
-            reply("⏳ _Sedang mengirim status teks ke dalam grup..._");
             await sendGroupStatus(sock, m.chat, {
               text: text.trim()
             });
-            reply("✅ *Status teks berhasil dikirim ke grup!*");
           }
         } catch (errGs) {
           console.error("\x1b[31m[ERROR STATUS GRUP]:\x1b[0m", errGs);
-          reply(`❌ *Gagal mengirim status grup:*\n${errGs?.message || errGs}`);
+          reply(`❌ *Gagal membuat status grup:*\n${errGs?.message || errGs}`);
         }
       }
         break
@@ -1558,7 +1554,6 @@ Mengirim WhatsApp Story 24 jam (\`status@broadcast\`) yang HANYA bisa dilihat ol
           const media = await extractMedia(m);
 
           if (media) {
-            reply("⏳ _Sedang memposting status WhatsApp story khusus anggota grup..._");
             const caption = text || media.caption || '';
             await sendGroupStory(sock, m.chat, {
               buffer: media.buffer,
@@ -1571,7 +1566,6 @@ Mengirim WhatsApp Story 24 jam (\`status@broadcast\`) yang HANYA bisa dilihat ol
               return reply(`❌ *Masukkan teks status story atau balas media (gambar/video)!*\n\n*Contoh:* \`${prefix + command} Pengumuman rahasia khusus member grup ini!\``);
             }
 
-            reply("⏳ _Sedang memposting status WhatsApp story teks khusus anggota grup..._");
             await sendGroupStory(sock, m.chat, {
               text: text.trim()
             });

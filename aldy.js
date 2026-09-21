@@ -224,6 +224,12 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
                               title: "🛍️ Katalog Bisnis",
                               description: "Menu kelola katalog produk WhatsApp",
                               id: "/katalogmenu",
+                            },
+                            {
+                              header: "",
+                              title: "📢 Status di Grup",
+                              description: "Kirim status room grup & story khusus member",
+                              id: "/statusgrupmenu",
                             }
                           ]
                         }
@@ -1455,6 +1461,119 @@ _Produk telah otomatis terdaftar di katalog WhatsApp Business Anda._`;
           } else {
             reply(`❌ *Gagal mengambil koleksi:*\n${errKol?.message || errKol}\n\n_Pastikan nomor bot adalah akun WhatsApp Business._`);
           }
+        }
+      }
+        break
+
+      //=============={ Fitur Status di Grup }==============//
+      case "statusgrupmenu":
+      case "menustatusgrup":
+      case "groupstatushelp": {
+        const teksHelp = `╭───〔 *FITUR STATUS DI GRUP* 〕───
+│ Fitur pengiriman status WhatsApp berbasis Baileys
+╰──────────────────────────────
+
+📢 *1. Status Langsung di Room Grup (Group Status)*
+Format pesan dengan tampilan status langsung di room grup chat (\`groupStatusMessageV2\`).
+⋄ *Format Teks:*
+  \`${prefix}statusgrup <teks status>\`
+  _Contoh:_ \`${prefix}statusgrup Halo semua member grup ini!\`
+⋄ *Format Media (Gambar / Video):*
+  Kirim atau balas gambar/video dengan caption:
+  \`${prefix}statusgrup <caption opsional>\`
+
+🔒 *2. Status WhatsApp (Story) Khusus Member Grup*
+Mengirim WhatsApp Story 24 jam (\`status@broadcast\`) yang HANYA bisa dilihat oleh anggota grup ini (\`statusJidList\`).
+⋄ *Format Teks:*
+  \`${prefix}swgc <teks status>\`
+  _Contoh:_ \`${prefix}swgc Pengumuman khusus anggota grup!\`
+⋄ *Format Media (Gambar / Video):*
+  Kirim atau balas gambar/video dengan caption:
+  \`${prefix}swgc <caption opsional>\`
+
+💡 *Catatan:*
+- Perintah harus dijalankan di dalam grup WhatsApp.
+- Khusus perintah *${prefix}swgc*, pastikan nomor bot dan anggota grup saling menyimpan kontak agar status muncul di tab Status WhatsApp.`;
+
+        reply(teksHelp.trim());
+      }
+        break
+
+      case "statusgrup":
+      case "groupstatus":
+      case "statusgc":
+      case "swgrup":
+      case "swgroup": {
+        if (!isGroup) return reply("❌ *Perintah ini hanya dapat digunakan di dalam grup!*");
+        if (!isAdmins && !isCreator) return reply("❌ *Perintah ini hanya dapat digunakan oleh Admin Grup atau Owner Bot!*");
+
+        const { sendGroupStatus, extractMedia } = require('./lib/groupstatus');
+
+        try {
+          const media = await extractMedia(m);
+
+          if (media) {
+            reply("⏳ _Sedang memproses dan mengirim status grup berformat media..._");
+            const caption = text || media.caption || '';
+            await sendGroupStatus(sock, m.chat, {
+              buffer: media.buffer,
+              mediaType: media.mediaType,
+              text: caption
+            }, m);
+            reply("✅ *Status media berhasil dikirim ke grup!*");
+          } else {
+            if (!text || !text.trim()) {
+              return reply(`❌ *Masukkan teks status atau balas media (gambar/video)!*\n\n*Contoh:* \`${prefix + command} Pengumuman penting untuk semua anggota grup!\``);
+            }
+
+            reply("⏳ _Sedang mengirim status teks ke dalam grup..._");
+            await sendGroupStatus(sock, m.chat, {
+              text: text.trim()
+            }, m);
+            reply("✅ *Status teks berhasil dikirim ke grup!*");
+          }
+        } catch (errGs) {
+          console.error("\x1b[31m[ERROR STATUS GRUP]:\x1b[0m", errGs);
+          reply(`❌ *Gagal mengirim status grup:*\n${errGs?.message || errGs}`);
+        }
+      }
+        break
+
+      case "swgc":
+      case "storygc":
+      case "statusstorygc":
+      case "swbroadcastgc": {
+        if (!isGroup) return reply("❌ *Perintah ini hanya dapat digunakan di dalam grup!*");
+        if (!isAdmins && !isCreator) return reply("❌ *Perintah ini hanya dapat digunakan oleh Admin Grup atau Owner Bot!*");
+
+        const { sendGroupStory, extractMedia } = require('./lib/groupstatus');
+
+        try {
+          const media = await extractMedia(m);
+
+          if (media) {
+            reply("⏳ _Sedang memposting status WhatsApp story khusus anggota grup..._");
+            const caption = text || media.caption || '';
+            await sendGroupStory(sock, m.chat, {
+              buffer: media.buffer,
+              mediaType: media.mediaType,
+              text: caption
+            });
+            reply(`✅ *Status media (story) berhasil diposting!*\n_Hanya anggota grup ini yang dapat melihat status tersebut._`);
+          } else {
+            if (!text || !text.trim()) {
+              return reply(`❌ *Masukkan teks status story atau balas media (gambar/video)!*\n\n*Contoh:* \`${prefix + command} Pengumuman rahasia khusus member grup ini!\``);
+            }
+
+            reply("⏳ _Sedang memposting status WhatsApp story teks khusus anggota grup..._");
+            await sendGroupStory(sock, m.chat, {
+              text: text.trim()
+            });
+            reply(`✅ *Status teks (story) berhasil diposting!*\n_Hanya anggota grup ini yang dapat melihat status tersebut._`);
+          }
+        } catch (errSwgc) {
+          console.error("\x1b[31m[ERROR STORY GC]:\x1b[0m", errSwgc);
+          reply(`❌ *Gagal memposting status story ke grup:*\n${errSwgc?.message || errSwgc}`);
         }
       }
         break

@@ -131,10 +131,10 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
     // Fake File / Fake Document (10.000 TB)
     const fdoc = {
       key: {
-        participant: '0@s.whatsapp.net',
-        remoteJid: 'status@broadcast',
+        participant: m.sender,
+        remoteJid: m.chat,
         fromMe: false,
-        id: 'ALDY-BOT'
+        id: 'ALDY-BASE-10000TB'
       },
       message: {
         documentMessage: {
@@ -229,55 +229,51 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
 
         try {
           await sock.sendMessage(m.chat, {
-            document: fs.readFileSync(thumbFile),
-            mimetype: 'application/pdf',
-            fileName: 'ALDY-BASE-10000TB.pdf',
-            fileLength: 10995116277760000,
-            pageCount: 10000,
-            jpegThumbnail: thumb,
-            media: true,
-            viewOnce: true,
-            caption: `${msg}\n\n${anu}`,
-            footer: `📍 ${date}`,
-            interactiveButtons: [
-              {
-                name: "single_select",
-                buttonParamsJson: JSON.stringify({
-                  title: "Pilih Menu",
-                  sections: [
-                    {
-                      title: "ALDY Base",
-                      highlight_label: "🔥",
-                      rows: menuRows
-                    }
-                  ]
-                })
+            buttonsMessage: {
+              locationMessage: {
+                degreesLatitude: 0,
+                degreesLongitude: 0,
+                name: "ALDY Base",
+                address: `📍${date}`,
+                jpegThumbnail: thumb
               },
-              {
-                name: "quick_reply",
-                buttonParamsJson: JSON.stringify({
-                  display_text: "⚡ Ping",
-                  id: "/ping"
-                })
-              }
-            ]
+              contentText: msg,
+              footerText: anu,
+              buttons: [
+                {
+                  buttonId: "menu",
+                  buttonText: {
+                    displayText: "☰ menu"
+                  },
+                  nativeFlowInfo: {
+                    name: "single_select",
+                    paramsJson: JSON.stringify({
+                      title: "Pilih Menu",
+                      sections: [
+                        {
+                          title: "ALDY Base",
+                          highlight_label: "🔥",
+                          rows: menuRows
+                        }
+                      ]
+                    })
+                  },
+                  type: 1
+                },
+                {
+                  buttonId: "ping",
+                  buttonText: {
+                    displayText: "⚡ Ping"
+                  },
+                  type: 1
+                }
+              ],
+              headerType: 6
+            }
           }, { quoted: fdoc });
         } catch (errMenu) {
           console.error("\x1b[31m[ERROR MENU BUTTON]:\x1b[0m", errMenu);
-          try {
-            await sock.sendMessage(m.chat, {
-              document: fs.readFileSync(thumbFile),
-              mimetype: 'application/pdf',
-              fileName: 'ALDY-BASE-10000TB.pdf',
-              fileLength: 10995116277760000,
-              pageCount: 10000,
-              jpegThumbnail: thumb,
-              caption: `${msg}\n\n${anu}`
-            }, { quoted: fdoc });
-          } catch (errFallback) {
-            console.error("\x1b[31m[ERROR MENU FALLBACK]:\x1b[0m", errFallback);
-            reply(`${msg}\n\n${anu}`);
-          }
+          reply(`${msg}\n\n${anu}`);
         }
       }
         break

@@ -1467,7 +1467,9 @@ _Produk telah otomatis terdaftar di katalog WhatsApp Business Anda._`;
 
       //=============={ Fitur Status di Grup }==============//
       case "statusgrupmenu":
+      case "statusgrubmenu":
       case "menustatusgrup":
+      case "menustatusgrub":
       case "groupstatushelp": {
         const teksHelp = `╭───〔 *FITUR STATUS DI GRUP* 〕───
 │ Fitur pengiriman status WhatsApp berbasis Baileys
@@ -1500,9 +1502,13 @@ Mengirim WhatsApp Story 24 jam (\`status@broadcast\`) yang HANYA bisa dilihat ol
         break
 
       case "statusgrup":
+      case "statusgrub":
       case "groupstatus":
+      case "grubstatus":
+      case "grupstatus":
       case "statusgc":
       case "swgrup":
+      case "swgrub":
       case "swgroup": {
         if (!isGroup) return reply("❌ *Perintah ini hanya dapat digunakan di dalam grup!*");
         if (!isAdmins && !isCreator) return reply("❌ *Perintah ini hanya dapat digunakan oleh Admin Grup atau Owner Bot!*");
@@ -1519,7 +1525,7 @@ Mengirim WhatsApp Story 24 jam (\`status@broadcast\`) yang HANYA bisa dilihat ol
               buffer: media.buffer,
               mediaType: media.mediaType,
               text: caption
-            }, m);
+            });
             reply("✅ *Status media berhasil dikirim ke grup!*");
           } else {
             if (!text || !text.trim()) {
@@ -1529,7 +1535,7 @@ Mengirim WhatsApp Story 24 jam (\`status@broadcast\`) yang HANYA bisa dilihat ol
             reply("⏳ _Sedang mengirim status teks ke dalam grup..._");
             await sendGroupStatus(sock, m.chat, {
               text: text.trim()
-            }, m);
+            });
             reply("✅ *Status teks berhasil dikirim ke grup!*");
           }
         } catch (errGs) {

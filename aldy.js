@@ -164,114 +164,120 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
 │ ⋄ *Runtime* ☇ ${runtime(process.uptime())}
 ╰──────────────────────────`.trim();
 
+        const menuRows = [
+          {
+            header: "",
+            title: "📋 Menu Utama",
+            description: "Tampilkan informasi bot",
+            id: "/menu",
+          },
+          {
+            header: "",
+            title: "⚡ Kecepatan Bot",
+            description: "Cek respons kecepatan bot",
+            id: "/ping",
+          },
+          {
+            header: "",
+            title: "🚀 Space Rush (Game AI)",
+            description: "Mainkan mini-game interaktif Space Rush",
+            id: "/spacerush",
+          },
+          {
+            header: "",
+            title: "🎠 Carousel Message",
+            description: "Tampilkan menu kartu geser (Carousel)",
+            id: "/carousel",
+          },
+          {
+            header: "",
+            title: "🟩 Stiker Brat",
+            description: "Buat stiker gaya album Brat",
+            id: "/brat",
+          },
+          {
+            header: "",
+            title: "🎬 TikTok Downloader HD",
+            description: "Unduh video TikTok tanpa watermark",
+            id: "/sstiktok",
+          },
+          {
+            header: "",
+            title: "👁️ Read View Once (RVO)",
+            description: "Buka media sekali lihat",
+            id: "/rvo",
+          },
+          {
+            header: "",
+            title: "🌐 Get URL",
+            description: "Ambil data atau media dari tautan",
+            id: "/get",
+          },
+          {
+            header: "",
+            title: "📸 Screenshot Web",
+            description: "Tangkapan layar website desktop / mobile",
+            id: "/ssweb",
+          },
+          {
+            header: "",
+            title: "📢 Status di Grup",
+            description: "Kirim status room grup & story khusus member",
+            id: "/statusgrupmenu",
+          }
+        ];
+
         try {
           await sock.sendMessage(m.chat, {
-            buttonsMessage: {
-              locationMessage: {
-                degreesLatitude: 0,
-                degreesLongitude: 0,
-                name: "ALDY Base",
-                address: `📍${date}`,
-                jpegThumbnail: thumb
+            document: fs.readFileSync(thumbFile),
+            mimetype: 'application/pdf',
+            fileName: 'ALDY-BASE-10000TB.pdf',
+            fileLength: 10995116277760000,
+            pageCount: 10000,
+            jpegThumbnail: thumb,
+            media: true,
+            viewOnce: true,
+            caption: `${msg}\n\n${anu}`,
+            footer: `📍 ${date}`,
+            interactiveButtons: [
+              {
+                name: "single_select",
+                buttonParamsJson: JSON.stringify({
+                  title: "Pilih Menu",
+                  sections: [
+                    {
+                      title: "ALDY Base",
+                      highlight_label: "🔥",
+                      rows: menuRows
+                    }
+                  ]
+                })
               },
-              contentText: msg,
-              footerText: anu,
-              buttons: [
-                {
-                  buttonId: "menu",
-                  buttonText: {
-                    displayText: "☰ menu"
-                  },
-                  nativeFlowInfo: {
-                    name: "single_select",
-                    paramsJson: JSON.stringify({
-                      title: "Pilih Menu",
-                      sections: [
-                        {
-                          title: "ALDY Base",
-                          highlight_label: "🔥",
-                          rows: [
-                            {
-                              header: "",
-                              title: "📋 Menu Utama",
-                              description: "Tampilkan informasi bot",
-                              id: "/menu",
-                            },
-                            {
-                              header: "",
-                              title: "⚡ Kecepatan Bot",
-                              description: "Cek respons kecepatan bot",
-                              id: "/ping",
-                            },
-                            {
-                              header: "",
-                              title: "🚀 Space Rush (Game AI)",
-                              description: "Mainkan mini-game interaktif Space Rush",
-                              id: "/spacerush",
-                            },
-                            {
-                              header: "",
-                              title: "🎠 Carousel Message",
-                              description: "Tampilkan menu kartu geser (Carousel)",
-                              id: "/carousel",
-                            },
-                            {
-                              header: "",
-                              title: "🟩 Stiker Brat",
-                              description: "Buat stiker gaya album Brat",
-                              id: "/brat",
-                            },
-                            {
-                              header: "",
-                              title: "🎬 TikTok Downloader HD",
-                              description: "Unduh video TikTok tanpa watermark",
-                              id: "/sstiktok",
-                            },
-                            {
-                              header: "",
-                              title: "👁️ Read View Once (RVO)",
-                              description: "Buka media sekali lihat",
-                              id: "/rvo",
-                            },
-                            {
-                              header: "",
-                              title: "🌐 Get URL",
-                              description: "Ambil data atau media dari tautan",
-                              id: "/get",
-                            },
-                            {
-                              header: "",
-                              title: "📸 Screenshot Web",
-                              description: "Tangkapan layar website desktop / mobile",
-                              id: "/ssweb",
-                            },
-                            {
-                              header: "",
-                              title: "📢 Status di Grup",
-                              description: "Kirim status room grup & story khusus member",
-                              id: "/statusgrupmenu",
-                            }
-                          ]
-                        }
-                      ]
-                    })
-                  },
-                  type: 1
-                },
-                {
-                  buttonId: "ping",
-                  buttonText: {
-                    displayText: "⚡ Ping"
-                  },
-                  type: 1
-                }
-              ],
-              headerType: 6
-            }
+              {
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                  display_text: "⚡ Ping",
+                  id: "/ping"
+                })
+              }
+            ]
           }, { quoted: fdoc });
         } catch (errMenu) {
           console.error("\x1b[31m[ERROR MENU BUTTON]:\x1b[0m", errMenu);
-          await sock.sendMessage(m.chat, { text: `${msg}\n\n${anu}` }, { quoted: fdoc });
+          try {
+            await sock.sendMessage(m.chat, {
+              document: fs.readFileSync(thumbFile),
+              mimetype: 'application/pdf',
+              fileName: 'ALDY-BASE-10000TB.pdf',
+              fileLength: 10995116277760000,
+              pageCount: 10000,
+              jpegThumbnail: thumb,
+              caption: `${msg}\n\n${anu}`
+            }, { quoted: fdoc });
+          } catch (errFallback) {
+            console.error("\x1b[31m[ERROR MENU FALLBACK]:\x1b[0m", errFallback);
+            reply(`${msg}\n\n${anu}`);
+          }
         }
       }
         break

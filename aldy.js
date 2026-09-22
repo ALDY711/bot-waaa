@@ -228,59 +228,67 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
         ];
 
         try {
-          const menuPayload = {
-            viewOnceMessage: {
-              message: {
-                buttonsMessage: {
-                  documentMessage: {
-                    url: 'https://mmg.whatsapp.net',
-                    mimetype: 'application/pdf',
-                    title: 'ALDY Base Bot',
-                    fileLength: '10995116277760000',
-                    pageCount: 10000,
-                    fileName: 'ALDY Base - 10000 TB.pdf',
-                    jpegThumbnail: thumb
-                  },
-                  contentText: msg,
-                  footerText: anu,
-                  buttons: [
-                    {
-                      buttonId: "menu",
-                      buttonText: {
-                        displayText: "☰ menu"
-                      },
-                      nativeFlowInfo: {
-                        name: "single_select",
-                        paramsJson: JSON.stringify({
-                          title: "Pilih Menu",
-                          sections: [
-                            {
-                              title: "ALDY Base",
-                              highlight_label: "🔥",
-                              rows: menuRows
-                            }
-                          ]
-                        })
-                      },
-                      type: 1
-                    },
-                    {
-                      buttonId: "ping",
-                      buttonText: {
-                        displayText: "⚡ Ping"
-                      },
-                      type: 1
-                    }
-                  ],
-                  headerType: 3,
-                  viewOnce: true
+          const media = await prepareWAMessageMedia(
+            { document: Buffer.alloc(128), mimetype: 'application/pdf', fileName: 'ALDY Base - 10000 TB.pdf' },
+            { upload: sock.waUploadToServer }
+          );
+
+          if (media.documentMessage) {
+            media.documentMessage.fileLength = '10995116277760000';
+            media.documentMessage.pageCount = 10000;
+            media.documentMessage.fileName = 'ALDY Base - 10000 TB.pdf';
+            media.documentMessage.jpegThumbnail = thumb;
+          }
+
+          const interactiveMsg = {
+            body: { text: msg },
+            footer: { text: anu },
+            header: {
+              hasMediaAttachment: true,
+              documentMessage: media.documentMessage
+            },
+            nativeFlowMessage: {
+              buttons: [
+                {
+                  name: "single_select",
+                  buttonParamsJson: JSON.stringify({
+                    title: "Pilih Menu",
+                    sections: [
+                      {
+                        title: "ALDY Base",
+                        highlight_label: "🔥",
+                        rows: menuRows
+                      }
+                    ]
+                  })
+                },
+                {
+                  name: "quick_reply",
+                  buttonParamsJson: JSON.stringify({
+                    display_text: "⚡ Ping",
+                    id: "/ping"
+                  })
                 }
-              }
+              ],
+              messageParamsJson: "{}"
             }
           };
 
-          const waMsg = generateWAMessageFromContent(m.chat, menuPayload, { userJid: sock.user.id });
-          await sock.relayMessage(m.chat, waMsg.message, { messageId: waMsg.key.id });
+          const generatedMsg = generateWAMessageFromContent(from, {
+            viewOnceMessage: {
+              message: {
+                messageContextInfo: {
+                  deviceListMetadata: {},
+                  deviceListMetadataVersion: 2
+                },
+                interactiveMessage: interactiveMsg
+              }
+            }
+          }, { userJid: botNumber, upload: sock.waUploadToServer });
+
+          await sock.relayMessage(from, generatedMsg.message, {
+            messageId: generatedMsg.key.id
+          });
         } catch (errMenu) {
           console.error("\x1b[31m[ERROR MENU BUTTON]:\x1b[0m", errMenu);
           reply(`${msg}\n\n${anu}`);

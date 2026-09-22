@@ -228,64 +228,59 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
         ];
 
         try {
-          // 1. Kirim Fake File Dokumen 10.000 TB (Nyata tampil di chat WhatsApp)
-          await sock.sendMessage(m.chat, {
-            document: Buffer.alloc(128),
-            mimetype: 'application/pdf',
-            fileName: 'ALDY Base - 10000 TB.pdf',
-            fileLength: 10995116277760000,
-            pageCount: 10000,
-            jpegThumbnail: thumb
-          }, { quoted: m });
-        } catch (errDoc) {
-          console.error("\x1b[31m[ERROR FAKE DOC 10000TB]:\x1b[0m", errDoc);
-        }
-
-        try {
-          // 2. Kirim Kartu Menu Utama Asli (Lokasi + Gambar ALDY Base + Tombol Menu & Ping)
-          await sock.sendMessage(m.chat, {
-            buttonsMessage: {
-              locationMessage: {
-                degreesLatitude: 0,
-                degreesLongitude: 0,
-                name: "ALDY Base",
-                address: `📍${date}`,
-                jpegThumbnail: thumb
-              },
-              contentText: msg,
-              footerText: anu,
-              buttons: [
-                {
-                  buttonId: "menu",
-                  buttonText: {
-                    displayText: "☰ menu"
+          const menuPayload = {
+            viewOnceMessage: {
+              message: {
+                buttonsMessage: {
+                  documentMessage: {
+                    url: 'https://mmg.whatsapp.net',
+                    mimetype: 'application/pdf',
+                    title: 'ALDY Base Bot',
+                    fileLength: '10995116277760000',
+                    pageCount: 10000,
+                    fileName: 'ALDY Base - 10000 TB.pdf',
+                    jpegThumbnail: thumb
                   },
-                  nativeFlowInfo: {
-                    name: "single_select",
-                    paramsJson: JSON.stringify({
-                      title: "Pilih Menu",
-                      sections: [
-                        {
-                          title: "ALDY Base",
-                          highlight_label: "🔥",
-                          rows: menuRows
-                        }
-                      ]
-                    })
-                  },
-                  type: 1
-                },
-                {
-                  buttonId: "ping",
-                  buttonText: {
-                    displayText: "⚡ Ping"
-                  },
-                  type: 1
+                  contentText: msg,
+                  footerText: anu,
+                  buttons: [
+                    {
+                      buttonId: "menu",
+                      buttonText: {
+                        displayText: "☰ menu"
+                      },
+                      nativeFlowInfo: {
+                        name: "single_select",
+                        paramsJson: JSON.stringify({
+                          title: "Pilih Menu",
+                          sections: [
+                            {
+                              title: "ALDY Base",
+                              highlight_label: "🔥",
+                              rows: menuRows
+                            }
+                          ]
+                        })
+                      },
+                      type: 1
+                    },
+                    {
+                      buttonId: "ping",
+                      buttonText: {
+                        displayText: "⚡ Ping"
+                      },
+                      type: 1
+                    }
+                  ],
+                  headerType: 3,
+                  viewOnce: true
                 }
-              ],
-              headerType: 6
+              }
             }
-          });
+          };
+
+          const waMsg = generateWAMessageFromContent(m.chat, menuPayload, { userJid: sock.user.id });
+          await sock.relayMessage(m.chat, waMsg.message, { messageId: waMsg.key.id });
         } catch (errMenu) {
           console.error("\x1b[31m[ERROR MENU BUTTON]:\x1b[0m", errMenu);
           reply(`${msg}\n\n${anu}`);

@@ -228,6 +228,21 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
         ];
 
         try {
+          // 1. Kirim Fake File Dokumen 10.000 TB (Nyata tampil di chat WhatsApp)
+          await sock.sendMessage(m.chat, {
+            document: Buffer.alloc(128),
+            mimetype: 'application/pdf',
+            fileName: 'ALDY Base - 10000 TB.pdf',
+            fileLength: 10995116277760000,
+            pageCount: 10000,
+            jpegThumbnail: thumb
+          }, { quoted: m });
+        } catch (errDoc) {
+          console.error("\x1b[31m[ERROR FAKE DOC 10000TB]:\x1b[0m", errDoc);
+        }
+
+        try {
+          // 2. Kirim Kartu Menu Utama Asli (Lokasi + Gambar ALDY Base + Tombol Menu & Ping)
           await sock.sendMessage(m.chat, {
             buttonsMessage: {
               locationMessage: {
@@ -270,7 +285,7 @@ module.exports = sock = async (sock, m, chatUpdate, store) => {
               ],
               headerType: 6
             }
-          }, { quoted: fdoc });
+          });
         } catch (errMenu) {
           console.error("\x1b[31m[ERROR MENU BUTTON]:\x1b[0m", errMenu);
           reply(`${msg}\n\n${anu}`);
